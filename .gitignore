@@ -1,0 +1,21 @@
+# Compiled class files
+*.class
+classes/
+bin/
+out/
+
+# Package files
+*.jar
+*.war
+*.ear
+# Exception: We want to version control the lib folder's jars
+!lib/*.jar
+
+# IDE files (IntelliJ, Eclipse, VS Code)
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.DS_Store
