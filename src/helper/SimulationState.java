@@ -1,3 +1,5 @@
+package helper;
+
 import java.io.Serializable;
 
 public class SimulationState implements Serializable {

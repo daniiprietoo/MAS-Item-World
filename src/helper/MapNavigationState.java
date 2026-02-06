@@ -1,3 +1,4 @@
+package helper;
 import jade.util.leap.Serializable;
 
 public class MapNavigationState extends State implements Serializable{

@@ -1,3 +1,5 @@
+package helper;
+
 import jade.util.leap.Serializable;
 
 public abstract class GenericOperator implements Serializable

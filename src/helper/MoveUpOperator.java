@@ -1,4 +1,5 @@
-public class MoveRightOperator extends GenericOperator {
+package helper;
+public class MoveUpOperator extends GenericOperator {
     
     @Override
     public State operate(State previousState)
@@ -8,7 +9,7 @@ public class MoveRightOperator extends GenericOperator {
         Position newPos = null;
         try {
             newPos = (Position) mapNavState.position.clone();
-            newPos.y++;
+            newPos.x--;
         } catch (Exception e)
         {
             e.printStackTrace();
@@ -20,7 +21,6 @@ public class MoveRightOperator extends GenericOperator {
     @Override
     public String toString()
     {
-        return "MoveRight";
+        return "MoveUp";
     }
 }
-
