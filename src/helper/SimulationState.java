@@ -28,5 +28,9 @@ public class SimulationState implements Serializable {
     {
         return _position;
     }
+     @Override
+    public String toString() {
+        return _map.toString() + "\n" + _position.toString();
+    }
 
 }
