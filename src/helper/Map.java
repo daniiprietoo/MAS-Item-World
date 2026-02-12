@@ -163,6 +163,10 @@ public class Map implements Serializable, Cloneable {
         return mapStr;
     }
 
+    /** 
+     Returns list of positions with items in the map
+     * @return LinkedList of Positions with items
+     */
     public LinkedList<Position> getItemPositions()
     {
         LinkedList<Position> positions = new LinkedList<Position>();
@@ -178,7 +182,10 @@ public class Map implements Serializable, Cloneable {
 
         return positions;
     }
-
+    /**
+    Returns list of positions with traps in the map
+     * @return LinkedList of Positions with traps
+     */
     public LinkedList<Position> getTrapsPositions()
     {
         LinkedList<Position> positions = new LinkedList<Position>();

@@ -36,4 +36,19 @@ public class MapNavigator {
 
         return possiblePos;
     }
+
+    public LinkedList<Position> getItemPositions(Map map)
+    {
+        return map.getItemPositions();
+    }
+
+    public LinkedList<Position> getTrapPositions(Map map)
+    {
+        return map.getTrapsPositions();
+    }
+
+    public int manhattanDistance(Position pos1, Position pos2)
+    {
+        return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+    }
 }
