@@ -389,7 +389,7 @@ public class Map implements Serializable, Cloneable {
                         newTempCol = (tempCol + k2) % numCols;
                         if (mapMatrix[newTempRow][newTempCol] == 0)
                         {
-                            mapMatrix[newTempRow][newTempCol] = 2;
+                            mapMatrix[newTempRow][newTempCol] = 1;
                             generatedItems++;
                             break outerloop;
                         }

@@ -92,9 +92,16 @@ public class SimulationManagerBehaviour extends Behaviour {
         return participantsPos;
     }
 
-    private boolean occupiedByAgentPosition(Position pos)
+    private boolean occupiedByAgentPosition(Position pos, Participant excludeParticipant)
     {
-        return getParticipantsPositions().contains(pos);
+        // Check 
+        LinkedList<Participant> participants = ((SimulatorAgent)myAgent).getParticipants();
+        for (Participant participant : participants) {
+            if (!participant.equals(excludeParticipant) && participant.getSimulationState().getPosition().equals(pos)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private SimulationState processAction(Position newPosition, Participant participant)
@@ -106,7 +113,7 @@ public class SimulationManagerBehaviour extends Behaviour {
         Map currentMap = ((SimulatorAgent)myAgent).getCurrentMap();
 
         boolean validRequest = isValidMovement(newPosition, false) && 
-            !occupiedByAgentPosition(newPosition);
+            !occupiedByAgentPosition(newPosition, participant);
 
         int remainingCommitmentSteps = participant.decreaseCommitmentSteps(1);
         
