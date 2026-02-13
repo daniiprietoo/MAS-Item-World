@@ -15,14 +15,19 @@ import helper.Map;
 import helper.MapNavigator;
 import helper.Position;
 import helper.SimulationState;
-
+import java.util.Collections;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
- 
+
+
+
+
 public class AStarAgent extends Agent {
     private AID simulatorAgent;
     private int commitment;
@@ -31,12 +36,25 @@ public class AStarAgent extends Agent {
 
     private MapNavigator navigator;
     private Random rand;
+    private LinkedList<Position> currentPlan;
+    private Position currentTarget; 
+
+    private static class Node {
+        Position pos;
+        int score;
+
+        Node(Position pos, int score) {
+            this.pos = pos;
+            this.score = score;
+        }
+    }
 
     protected void setup() {
         super.setup();
         System.out.println("RandomAgent " + getAID().getName() + " is ready.");
         navigator = new MapNavigator();
         rand = new Random();
+        currentPlan = new LinkedList<>();
         Object[] args = getArguments();
 
         if (args != null && args.length > 0) {
@@ -78,17 +96,6 @@ public class AStarAgent extends Agent {
         });
     }
 
-
-    protected Position makeDecision(SimulationState currentState) {
-        Map map = currentState.getMap();
-        Position position = currentState.getPosition();
-
-        LinkedList<Position> candidates = navigator.getNextPossiblePositions(map, position);
-
-        if (candidates.isEmpty()) return position;
-
-        return candidates.get(rand.nextInt(candidates.size()));
-    }
 
     private class RequestJoinBehavior extends OneShotBehaviour {
 
@@ -147,51 +154,108 @@ public class AStarAgent extends Agent {
     }
 
 
-    private float heuristic(Position current, Position goal) {
+    private int heuristic(Position current, Position goal) {
         return manhattanDistance(current, goal);
     }
 
-
     private LinkedList<Position> reconstructPath(HashMap<Position, Position> cameFrom, Position current){
-        LinkedList<javax.swing.text.Position> total_path = new LinkedList<>();
+        LinkedList<Position> total_path = new LinkedList<>();
         total_path.add(current);
-        HashMap<javax.swing.text.Position, javax.swing.text.Position> cameFromCopy = new HashMap<Position, Position>(cameFrom);
-        Position currentCopy = new Position(current.x, current.y);
-        while (cameFromCopy.get(currentCopy) != null){
-            currentCopy = cameFromCopy.get(currentCopy);
+        while (cameFrom.containsKey(current)){
+            current = cameFrom.get(current);
             total_path.add(current);
         }
+        Collections.reverse(total_path);
         return total_path;
-    }
+    }    
+
 
     private LinkedList<Position> aStar(Position initialPosition, Position goalPosition, SimulationState currentState) {
         Map map = currentState.getMap();
         Position position = currentState.getPosition();
-        PriorityQueue<Position> openSet = new PriorityQueue<Position>();
-        openSet.add(initialPosition);
+        LinkedList<Position> traps = map.getTrapsPositions();
+        Set<Position> trapSet = new HashSet<>(traps);
+        PriorityQueue<Node> openSet = new PriorityQueue<>((a, b) -> Integer.compare(a.score, b.score));
+        openSet.add(new Node(position, 0));
         HashMap<Position, Position> cameFrom = new HashMap<>();
-        HashMap<Position, int> gScore = new HashMap<>();
+        HashMap<Position, Integer> gScore = new HashMap<>();
         gScore.put(initialPosition, 0);
-        HashMap<Position, int> fScore = new HashMap<>();
+        HashMap<Position, Integer> fScore = new HashMap<>();
         fScore.put(initialPosition, heuristic(position, goalPosition));
         while (openSet.size() > 0) {
-            Position current = openSet.poll();
+            Position current = openSet.poll().pos;
             if (current.equals(goalPosition)) {
                 return reconstructPath(cameFrom, current);
             }
             LinkedList<Position> candidates = navigator.getNextPossiblePositions(map, current);
             for (Position neighbor : candidates) {
-                float tentativeScore = gScore.get(current) + 1;
-                if ((gScore.get(neighbor) != null) && (tentativeScore  < gScore.get(neighbor))) {
+                if (trapSet.contains(neighbor)){
+                    continue;
+                }
+                int tentativeScore = gScore.get(current) + 1;
+                if (gScore.get(neighbor) == null){
+                    gScore.put(neighbor, 1000000000);
+                }
+                if (tentativeScore < gScore.get(neighbor)) {
                     cameFrom.put(neighbor, current);
                     gScore.put(neighbor, tentativeScore);
-                    fScore.put(neighbor, tentativeScore + heuristic(current, goalPosition)); 
-                    if (!openSet.contains(neighbor)) {
-                        openSet.add(neighbor);
+                    fScore.put(neighbor, tentativeScore + heuristic(current, goalPosition));
+                    Node nodeNeighbor = new Node(neighbor, tentativeScore + heuristic(current, goalPosition));  
+                    if (!openSet.contains(nodeNeighbor)) {
+                        openSet.add(nodeNeighbor);
                     }
                 }
             }
         }
+        return null;
+    }
+
+    protected Position makeDecision(SimulationState currentState) {
+        Position currentPosition = currentState.getPosition();
+        Map currentMap = currentState.getMap();
+
+        LinkedList<Position> items = currentMap.getItemPositions();
+        LinkedList<Position> traps = currentMap.getTrapsPositions();
+        Set<Position> trapSet = new HashSet<>(traps);
+
+        // 1. if there is no current plan or target
+        // 2. current plan is invalid (no object in destination)
+        // 3. current plan is invalid (trap in the way)
+        boolean shouldReplan = currentPlan.isEmpty()
+                || currentTarget == null
+                || !items.contains(currentTarget)
+                || (!currentPlan.isEmpty() && trapSet.contains(currentPlan.getFirst()));
+
+        if (shouldReplan) {
+            currentPlan.clear();
+            currentTarget = null;
+
+            // Find nearest REACHABLE
+            LinkedList<Position> bestPath = new LinkedList<>();
+            int bestDistance = Integer.MAX_VALUE;
+
+            for (Position itemPos: items) {
+                LinkedList<Position> path = aStar(currentPosition, itemPos, currentState);
+
+                if (path != null && path.size() < bestDistance) {
+                    bestDistance = path.size();
+                    bestPath = path;
+                    currentTarget = itemPos;
+                }
+            }
+
+            if (bestPath != null && bestPath.size() > 1) {
+                // Remove current position from path
+                currentPlan = bestPath;
+            }
+        }
+
+        if (!currentPlan.isEmpty()) {
+            Position next = currentPlan.removeFirst();
+            return next;
+        }
+
+        return currentPosition;
     }
 
     private class GameLoopBehavior extends CyclicBehaviour {
@@ -203,9 +267,7 @@ public class AStarAgent extends Agent {
                 try {
                     switch (msg.getPerformative()) {
                         case ACLMessage.REQUEST:
-                            LinkedList<Position> path = aStar(myState.getPosition(), new Position(5 ,5), myState);
-                            nexPosition = path[0];
-                            nexPosition.removeFirst();
+                            Position nexPosition = makeDecision(myState);
                             ACLMessage rep = msg.createReply();
                             rep.setPerformative(ACLMessage.PROPOSE);
                             rep.setContentObject(nexPosition);
