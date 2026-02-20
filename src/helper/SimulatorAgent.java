@@ -22,8 +22,8 @@ public class SimulatorAgent extends Agent {
     
     // Simulation parameters
     int numParticipants = 1;
-    int numSimRounds = 25;
-    int numStepsMapReDist = 10; // If equals numSimRounds, implies no map rescheduling
+    int numSimRounds = 1000;
+    int numStepsMapReDist = 100; // If equals numSimRounds, implies no map rescheduling
     
     // Simulation state
     public boolean simulationStarted = false;
