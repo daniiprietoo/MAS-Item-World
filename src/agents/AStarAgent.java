@@ -170,11 +170,10 @@ public class AStarAgent extends Agent {
     }    
 
 
-    private LinkedList<Position> aStar(Position initialPosition, Position goalPosition, SimulationState currentState) {
-        Map map = currentState.getMap();
-        Position position = currentState.getPosition();
+    private LinkedList<Position> aStar(Position initialPosition, Position goalPosition, Set<Position> trapSet) {
+        Map map = myState.getMap();
+        Position position = myState.getPosition();
         LinkedList<Position> traps = map.getTrapsPositions();
-        Set<Position> trapSet = new HashSet<>(traps);
         PriorityQueue<Node> openSet = new PriorityQueue<>((a, b) -> Integer.compare(a.score, b.score));
         openSet.add(new Node(position, 0));
         HashMap<Position, Position> cameFrom = new HashMap<>();
@@ -210,17 +209,15 @@ public class AStarAgent extends Agent {
         return null;
     }
 
-    protected Position makeDecision(SimulationState currentState) {
-        Position currentPosition = currentState.getPosition();
-        Map currentMap = currentState.getMap();
+    protected Position makeDecision() {
+        Position currentPosition = myState.getPosition();
+        Map currentMap = myState.getMap();
 
         LinkedList<Position> items = currentMap.getItemPositions();
         LinkedList<Position> traps = currentMap.getTrapsPositions();
         Set<Position> trapSet = new HashSet<>(traps);
 
-        // 1. if there is no current plan or target
-        // 2. current plan is invalid (no object in destination)
-        // 3. current plan is invalid (trap in the way)
+
         boolean shouldReplan = currentPlan.isEmpty()
                 || currentTarget == null
                 || !items.contains(currentTarget)
@@ -230,12 +227,11 @@ public class AStarAgent extends Agent {
             currentPlan.clear();
             currentTarget = null;
 
-            // Find nearest REACHABLE
-            LinkedList<Position> bestPath = new LinkedList<>();
+            LinkedList<Position> bestPath = null;
             int bestDistance = Integer.MAX_VALUE;
 
             for (Position itemPos: items) {
-                LinkedList<Position> path = aStar(currentPosition, itemPos, currentState);
+                LinkedList<Position> path = aStar(currentPosition, itemPos, trapSet);
 
                 if (path != null && path.size() < bestDistance) {
                     bestDistance = path.size();
@@ -245,16 +241,27 @@ public class AStarAgent extends Agent {
             }
 
             if (bestPath != null && bestPath.size() > 1) {
-                // Remove current position from path
-                currentPlan = bestPath;
+                bestPath.removeFirst();
+                currentPlan = new LinkedList<>(bestPath);
             }
         }
 
         if (!currentPlan.isEmpty()) {
             Position next = currentPlan.removeFirst();
-            return next;
-        }
+            LinkedList<Position> validMoves = navigator.getNextPossiblePositions(currentMap, currentPosition);
 
+            if (validMoves.contains(next)) {
+                if (items.contains(next)) {
+                    currentMap.clearPosition(next);
+                    currentTarget = null;
+                    currentPlan.clear();
+                }
+                return next;
+            } else {
+                currentPlan.clear();
+                currentTarget = null;
+            }
+        }
         return currentPosition;
     }
 
@@ -267,7 +274,7 @@ public class AStarAgent extends Agent {
                 try {
                     switch (msg.getPerformative()) {
                         case ACLMessage.REQUEST:
-                            Position nexPosition = makeDecision(myState);
+                            Position nexPosition = makeDecision();
                             ACLMessage rep = msg.createReply();
                             rep.setPerformative(ACLMessage.PROPOSE);
                             rep.setContentObject(nexPosition);
