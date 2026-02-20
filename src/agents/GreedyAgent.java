@@ -22,15 +22,17 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
- 
+import java.util.HashMap;
+
+
 public class GreedyAgent extends Agent {
     private AID simulatorAgent;
     private int commitment;
-    private SimulationState myState;
+    private SimulationState myState = null;
 
     private MapNavigator navigator;
 
-    private LinkedList<Position> currentPlan;
+    private LinkedList<Position> currentPlan = new LinkedList<>();
     private Position currentTarget; 
 
     protected void setup() {
@@ -78,17 +80,15 @@ public class GreedyAgent extends Agent {
         });
     }
     // Greedy decision-making
-    protected Position makeDecision(SimulationState currentState) {
-        Position currentPosition = currentState.getPosition();
-        Map currentMap = currentState.getMap();
+    protected Position makeDecision() {
+        Position currentPosition = myState.getPosition();
+        Map currentMap = myState.getMap();
 
         LinkedList<Position> items = currentMap.getItemPositions();
         LinkedList<Position> traps = currentMap.getTrapsPositions();
         Set<Position> trapSet = new HashSet<>(traps);
 
-        // 1. if there is no current plan or target
-        // 2. current plan is invalid (no object in destination)
-        // 3. current plan is invalid (trap in the way)
+
         boolean shouldReplan = currentPlan.isEmpty()
                 || currentTarget == null
                 || !items.contains(currentTarget)
@@ -98,8 +98,7 @@ public class GreedyAgent extends Agent {
             currentPlan.clear();
             currentTarget = null;
 
-            // Find nearest REACHABLE
-            LinkedList<Position> bestPath = new LinkedList<>();
+            LinkedList<Position> bestPath = null;
             int bestDistance = Integer.MAX_VALUE;
 
             for (Position itemPos: items) {
@@ -113,24 +112,27 @@ public class GreedyAgent extends Agent {
             }
 
             if (bestPath != null && bestPath.size() > 1) {
-                // Remove current position from path
                 bestPath.removeFirst();
-                currentPlan = bestPath;
+                currentPlan = new LinkedList<>(bestPath);
             }
         }
 
         if (!currentPlan.isEmpty()) {
             Position next = currentPlan.removeFirst();
-
-            // Check if still valid move
             LinkedList<Position> validMoves = navigator.getNextPossiblePositions(currentMap, currentPosition);
 
-            if (validMoves.contains(next)) return next;
-
-            currentPlan.clear();
-            currentTarget = null;
+            if (validMoves.contains(next)) {
+                if (items.contains(next)) {
+                    currentMap.clearPosition(next);
+                    currentTarget = null;
+                    currentPlan.clear();
+                }
+                return next;
+            } else {
+                currentPlan.clear();
+                currentTarget = null;
+            }
         }
-
         return currentPosition;
     }
 
@@ -141,32 +143,38 @@ public class GreedyAgent extends Agent {
             return single;
         }
 
-        Queue<LinkedList<Position>> queue = new ArrayDeque<>();
+        // Use a map to store the parent of each position for path reconstruction
+        java.util.Map<Position, Position> cameFrom = new HashMap<>();
+        Queue<Position> queue = new ArrayDeque<>();
+        Set<Position> visited = new HashSet<>();
 
-        Set<Position> visitedPositions = new HashSet<>();
+        queue.add(start);
+        visited.add(start);
+        cameFrom.put(start, null);
 
-        LinkedList<Position> initial = new LinkedList<>();
-        initial.add(start);
-        queue.add(initial);
-        visitedPositions.add(start);
 
         while (!queue.isEmpty()) {
-            LinkedList<Position> path = queue.poll();
-            Position current = path.getLast();
+            Position current = queue.poll();
 
-            for (Position neigh: navigator.getNextPossiblePositions(map, current)) {
-                if (visitedPositions.contains(neigh)) continue;
+            if (current.equals(goal)) {
+                // Reconstruct path
+                LinkedList<Position> path = new LinkedList<>();
+                Position step = goal;
+                while (step != null) {
+                    path.addFirst(step);
+                    step = cameFrom.get(step);
+                }
+                return path;
+            }
 
-                boolean isTrap = trapSet.contains(neigh);
-                if (isTrap) continue;
+            for (Position neighbor : navigator.getNextPossiblePositions(map, current)) {
+                if (visited.contains(neighbor) || trapSet.contains(neighbor)) {
+                    continue;
+                }
 
-                LinkedList<Position> newPath = new LinkedList<>(path);
-                newPath.add(neigh);
-
-                if (neigh.equals(goal)) return newPath;
-                
-                visitedPositions.add(neigh);
-                queue.add(newPath);
+                visited.add(neighbor);
+                cameFrom.put(neighbor, current);
+                queue.add(neighbor);
             }
         }
 
@@ -229,6 +237,12 @@ public class GreedyAgent extends Agent {
     private class GameLoopBehavior extends CyclicBehaviour {
 
         public void action() {
+
+            if (myState == null) {
+                block();
+                return;
+            } 
+
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
 
             mt = MessageTemplate.or(mt, MessageTemplate.MatchPerformative(ACLMessage.INFORM));
@@ -237,16 +251,30 @@ public class GreedyAgent extends Agent {
                 try {
                     switch (msg.getPerformative()) {
                         case ACLMessage.REQUEST:
-                            Position nexPosition = makeDecision(myState);
-                            ACLMessage rep = msg.createReply();
-                            rep.setPerformative(ACLMessage.PROPOSE);
-                            rep.setContentObject(nexPosition);
-                            myAgent.send(rep);
+                            try {
+                                Position nextPosition = makeDecision();
+                                ACLMessage rep = msg.createReply();
+                                rep.setPerformative(ACLMessage.PROPOSE);
+                                rep.setContentObject(nextPosition);
+                                myAgent.send(rep);
+                                System.out.println(getLocalName() + ": Proposed move to " + nextPosition);
+
+                            } catch (Exception e) {
+                                System.err.println(getLocalName() + ": Error in makeDecision: " + e.getMessage());
+                                e.printStackTrace();
+                                // Send current position as fallback
+                                Position fallback = myState.getPosition();
+                                ACLMessage rep = msg.createReply();
+                                rep.setPerformative(ACLMessage.PROPOSE);
+                                rep.setContentObject(fallback);
+                                myAgent.send(rep);
+                            }
                             break;
                     
                         case ACLMessage.INFORM:
                             if ("update-state".equals(msg.getConversationId())) {
-                                myState = (SimulationState) msg.getContentObject();
+                                SimulationState contentObject = (SimulationState) msg.getContentObject();
+                                myState = contentObject;
                             } else if ("simulation-complete".equals(msg.getConversationId())) {
                                 System.out.println(getLocalName() + ": Game Over.");
                                 myAgent.doDelete();
