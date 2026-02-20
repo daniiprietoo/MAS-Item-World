@@ -6,6 +6,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
+import config.Config;
+
 public class Map implements Serializable, Cloneable {
 
     private int numRows;
@@ -13,6 +15,7 @@ public class Map implements Serializable, Cloneable {
     private int[][] mapMatrix; // 0 represents empty position, 1 item, and 2 trap
     private int numTraps;
     private int numItems;
+    private Random rand;
                     
     public Map(int numRows, int numCols, int numItems, int numTraps) throws Exception
     {
@@ -20,7 +23,6 @@ public class Map implements Serializable, Cloneable {
         this.numCols = numCols;
         this.numTraps = numTraps;
         this.numItems = numItems;
-
         // Initialize map to zero's
         mapMatrix = new int[numRows][numCols];
         for (int k = 0; k < numRows; k++)
@@ -28,7 +30,11 @@ public class Map implements Serializable, Cloneable {
                 mapMatrix[k][k1] = 0;
 
         // create instance of Random class
-        Random rand = new Random();
+        if (Config.USE_SEED) {
+            rand = new Random(Config.SEED);
+        } else {
+            rand = new Random();
+        }
 
         // Generate items
         int generatedItems = 0;
@@ -209,8 +215,6 @@ public class Map implements Serializable, Cloneable {
 
     public void generateNewItem()
     {
-        // create instance of Random class
-        Random rand = new Random();
 
         boolean itemGenerated = false;
 
@@ -255,10 +259,7 @@ public class Map implements Serializable, Cloneable {
     public Position searchRandomEmtpyPosition()
     {
         Position emptyPos = null;
-        
-        // create instance of Random class
-        Random rand = new Random();
-
+    
         boolean positionFound = false;
 
         int tempRow = rand.nextInt(numRows); // 0...numRows-1
@@ -304,7 +305,6 @@ public class Map implements Serializable, Cloneable {
     public void redistributeTraps()
     {
         // create instance of Random class
-        Random rand = new Random();
 
         LinkedList<Position> trapPositions = getTrapsPositions();
         for(Position trapPos : trapPositions)
@@ -356,8 +356,6 @@ public class Map implements Serializable, Cloneable {
 
     public void redistributeItems()
     {
-        // create instance of Random class
-        Random rand = new Random();
 
         LinkedList<Position> itemPositions = getItemPositions();
         for(Position itemPos : itemPositions)
@@ -376,7 +374,7 @@ public class Map implements Serializable, Cloneable {
                 continue;
             }
             else {
-                //System.out.println("Attempted position for item not empty, finding alternative...");
+                // System.out.println("Attempted position for item not empty, finding alternative...");
                 // Search for next available position
                 int newTempRow = tempRow;
                 int newTempCol = tempCol;

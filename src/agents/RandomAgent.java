@@ -19,6 +19,8 @@ import helper.SimulationState;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Random;
+
+import config.Config;
  
 public class RandomAgent extends Agent {
     private AID simulatorAgent;
@@ -32,7 +34,11 @@ public class RandomAgent extends Agent {
         super.setup();
         System.out.println("RandomAgent " + getAID().getName() + " is ready.");
         navigator = new MapNavigator();
-        rand = new Random();
+        if (Config.USE_SEED) {
+            rand = new Random(Config.SEED);
+        } else {
+            rand = new Random();
+        }
         Object[] args = getArguments();
 
         if (args != null && args.length > 0) {
@@ -43,7 +49,7 @@ public class RandomAgent extends Agent {
         }
 
         try {
-            Thread.sleep(1000);
+            Thread.sleep(1500);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

@@ -1,5 +1,6 @@
 package helper;
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Position implements Serializable, Cloneable {
 
@@ -29,5 +30,10 @@ public class Position implements Serializable, Cloneable {
     public String toString()
     {
         return String.format("({%d},{%d})", x, y);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
     }
 }
