@@ -6,6 +6,7 @@ import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
+import jade.wrapper.ControllerException;
 import jade.domain.FIPAException;
 
 import java.util.LinkedList;
@@ -18,12 +19,12 @@ public class SimulatorAgent extends Agent {
     // Map parameters
     int mapSize = 10;
     int numItems = 5;
-    int numTraps = 10;
+    int numTraps = 0;
     
     // Simulation parameters
     int numParticipants = 1;
     int numSimRounds = 1000;
-    int numStepsMapReDist = 100; // If equals numSimRounds, implies no map rescheduling
+    int numStepsMapReDist = 9999; // If equals numSimRounds, implies no map rescheduling
     
     // Simulation state
     public boolean simulationStarted = false;
@@ -33,6 +34,24 @@ public class SimulatorAgent extends Agent {
     protected void setup() {
         System.out.println("Starting setup of simulator agent...");
 
+                Object[] args = getArguments();
+        if (args != null && args.length >= 1) {
+            try { numTraps           = Integer.parseInt((String) args[0]); } catch (Exception e) {}
+        }
+        if (args != null && args.length >= 2) {
+            try { numStepsMapReDist  = Integer.parseInt((String) args[1]); } catch (Exception e) {}
+        }
+        if (args != null && args.length >= 3) {
+            try { numParticipants    = Integer.parseInt((String) args[2]); } catch (Exception e) {}
+        }
+        if (args != null && args.length >= 4) {
+            try {
+                config.Config.SEED     = Long.parseLong((String) args[3]);
+                config.Config.USE_SEED = true;
+                System.out.println("Using seed: " + config.Config.SEED);
+            } catch (Exception e) {}
+        }
+        
         // Initialize map according to parameters
         try{
             _map = new Map(mapSize, mapSize, numItems, numTraps);
@@ -81,6 +100,12 @@ public class SimulatorAgent extends Agent {
 
                     showOverallState();
 
+                    
+                    try {
+                        myAgent.getContainerController().getPlatformController().kill(); // kill the whole platform
+                        return;
+                    } catch (final ControllerException e) {
+                    }
                     doDelete();
                 }
                 
@@ -174,8 +199,8 @@ public class SimulatorAgent extends Agent {
         }
         
         // SimulatorAgent's simulation state
-        System.out.println("\nSimulator's agent status:");
-        System.out.print(_map.toString(posToHighlight));
+        // System.out.println("\nSimulator's agent status:");
+        // System.out.print(_map.toString(posToHighlight));
         //_map.show(); // map with no highlighted participant's position
         
         // Show each participant's simulation state

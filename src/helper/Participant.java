@@ -72,13 +72,21 @@ public class Participant {
     }
 
     /* Mostly for debugging purposes. Returns string representing current participant's state */
+    // @Override
+    // public String toString() {
+    //     LinkedList<Position> posToHighlight = new LinkedList<Position>(Arrays.asList(simulationState.getPosition()));
+                
+    //     // Information about the participant's state
+    //     return String.format("\nName: %s\nPosition: (%d,%d)\nCommitment: %d-%d\nScore: %d\nNumTraps: %d\nMap:\n%s", 
+    //         agentAID.getLocalName(), simulationState.getPosition().x, simulationState.getPosition().y, 
+    //         currentCommitment, commitment, getScore(), numTraps, simulationState.getMap().toString(posToHighlight));
+    // }
+
     @Override
     public String toString() {
-        LinkedList<Position> posToHighlight = new LinkedList<Position>(Arrays.asList(simulationState.getPosition()));
                 
-        // Information about the participant's state
-        return String.format("\nName: %s\nPosition: (%d,%d)\nCommitment: %d-%d\nScore: %d\nNumTraps: %d\nMap:\n%s", 
-            agentAID.getLocalName(), simulationState.getPosition().x, simulationState.getPosition().y, 
-            currentCommitment, commitment, getScore(), numTraps, simulationState.getMap().toString(posToHighlight));
+        // Only return Score
+        return String.format("\nName: %s\nScore: %d\n", 
+            agentAID.getLocalName(), getScore());
     }
 }
